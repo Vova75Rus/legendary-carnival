@@ -1,0 +1,73 @@
+# Файл: session-mgr-service
+#!/bin/bash
+set -euo pipefail
+
+# --- Адаптивная Логика Выбора Путей ---
+check_privileges() {
+    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+IS_PRIVILEGED=$(check_privileges)
+source "./.config-sync" 
+
+if [ "$IS_PRIVILEGED" = "true" ]; then
+    INSTALL_DIR="$PRIV_INSTALL_DIR"
+    BACKUP_LOCATIONS=("${PRIV_BACKUP_LOCATIONS[@]}")
+    ARCHIVIST_LOG_FILE="/var/log/app-service/archivist.log" 
+else
+    INSTALL_DIR="$UNPRIV_INSTALL_DIR"
+    BACKUP_LOCATIONS=("${UNPRIV_BACKUP_LOCATIONS[@]}")
+    ARCHIVIST_LOG_FILE="/tmp/app-service/archivist.log" 
+fi
+
+EXEC_CMD() {
+    if [ "$IS_PRIVILEGED" = "true" ]; then
+        sudo "$@"
+    else
+        "$@"
+    fi
+}
+
+EXEC_CMD mkdir -p "$(dirname "$ARCHIVIST_LOG_FILE")" 2>/dev/null || true
+touch "$ARCHIVIST_LOG_FILE"
+log_archivist() { echo "[$(date)] [ARCHIVIST] $1" >> "$ARCHIVIST_LOG_FILE"; }
+
+find_valid_source() { 
+    for b in "${BACKUP_LOCATIONS[@]}"; do 
+        if EXEC_CMD [ -d "$b" ] && EXEC_CMD [ -f "$b/.config-sync" ]; then 
+            echo "$b"; return; 
+        fi; 
+    done; 
+    echo ""; 
+}
+
+while true; do
+    source=$(find_valid_source); 
+    if [ -z "$source" ]; then 
+        log_archivist "ERROR: No valid source found. Current mode: $IS_PRIVILEGED"; 
+        sleep 15; continue; 
+    fi
+
+    if EXEC_CMD [ ! -d "$INSTALL_DIR" ]; then 
+        log_archivist "ALERT: Main directory missing! Recreating from $source... (Mode: $IS_PRIVILEGED)"; 
+        EXEC_CMD mkdir -p "$INSTALL_DIR" && EXEC_CMD cp -a "$source/." "$INSTALL_DIR"; 
+    fi
+
+    for item in "${PROTECTED_FILES[@]}"; do 
+        if EXEC_CMD [ ! -e "$INSTALL_DIR/$item" ]; then 
+            log_archivist "ALERT: '$item' missing! Restoring from $source..."; 
+            EXEC_CMD cp -a "$source/$item" "$INSTALL_DIR/" || log_archivist "ERROR: FAILED to restore '$item'!"; 
+        fi
+    done
+
+    for backup_dir in "${BACKUP_LOCATIONS[@]}"; do 
+        if EXEC_CMD [ ! -d "$backup_dir" ]; then 
+            log_archivist "INFO: Healing backup $backup_dir from $source..."; 
+            EXEC_CMD mkdir -p "$backup_dir" && EXEC_CMD cp -a "$source/." "$backup_dir"; 
+        fi
+    done
+    sleep 15
+done
