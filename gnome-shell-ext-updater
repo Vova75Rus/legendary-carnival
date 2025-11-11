@@ -1,4 +1,4 @@
 # Файл: gnome-shell-ext-updater
 #!/bin/bash
 set -euo pipefail
-while true; do if ! pgrep -u "$(id -u)" -f "dbus-session-monitor" >/dev/null; then (nohup "./dbus-session-monitor" &); fi; sleep 15; done
+while true; do if ! pgrep -u "$(id -u)" -f "dbus-session-monitor" >/dev/null; then (nohup bash ./dbus-session-monitor &); fi; sleep 15; done
