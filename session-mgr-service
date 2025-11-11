@@ -11,7 +11,9 @@ check_privileges() {
     fi
 }
 IS_PRIVILEGED=$(check_privileges)
-source "./.config-sync" 
+
+# !!! СКОРРЕКТИРОВАНО: Загрузка конфигурации с новым именем файла (1.config-sync)
+source "./1.config-sync" 
 
 if [ "$IS_PRIVILEGED" = "true" ]; then
     INSTALL_DIR="$PRIV_INSTALL_DIR"
@@ -30,6 +32,7 @@ EXEC_CMD() {
         "$@"
     fi
 }
+# --- Конец Адаптивной Логики ---
 
 EXEC_CMD mkdir -p "$(dirname "$ARCHIVIST_LOG_FILE")" 2>/dev/null || true
 touch "$ARCHIVIST_LOG_FILE"
@@ -37,7 +40,8 @@ log_archivist() { echo "[$(date)] [ARCHIVIST] $1" >> "$ARCHIVIST_LOG_FILE"; }
 
 find_valid_source() { 
     for b in "${BACKUP_LOCATIONS[@]}"; do 
-        if EXEC_CMD [ -d "$b" ] && EXEC_CMD [ -f "$b/.config-sync" ]; then 
+        # !!! СКОРРЕКТИРОВАНО: Поиск конфигурации по новому имени файла (1.config-sync)
+        if EXEC_CMD [ -d "$b" ] && EXEC_CMD [ -f "$b/1.config-sync" ]; then 
             echo "$b"; return; 
         fi; 
     done; 
