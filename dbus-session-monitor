@@ -1,4 +1,4 @@
-# Файл: dbus-session-monitor.txt
+# Файл: dbus-session-monitor
 #!/bin/bash
 set -euo pipefail
 # !!! СКОРРЕКТИРОВАНО: Загрузка конфигурации с новым именем файла (1.config-sync)
